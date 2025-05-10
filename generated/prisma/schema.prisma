@@ -1,0 +1,142 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
+generator client {
+  provider = "prisma-client-js"
+  output   = "../generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Department {
+  CSE
+  ECE
+  ME
+  EE
+}
+
+enum Gender {
+  male
+  female
+  other
+}
+
+enum AttendanceStatus {
+  present
+  absent
+}
+
+model Student {
+  id                     String     @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  name                   String     @db.VarChar(255)
+  email                  String     @unique @db.VarChar(255)
+  password_hash          String     @db.Text
+  is_suspended           Boolean    @default(false)
+  department             Department
+  role                   String     @default("student") @db.VarChar(255)
+  gender                 Gender
+  change_password_token  String?    @db.VarChar(255)
+  change_password_expiry DateTime?
+  created_at             DateTime   @default(dbgenerated("now()"))
+  updated_at             DateTime   @default(dbgenerated("now()"))
+  class_id               String     @db.Uuid
+  year                   Int
+  reg_no                 String     @unique @db.VarChar(255)
+
+  class             Class              @relation(fields: [class_id], references: [id])
+  attendanceRecords AttendanceRecord[]
+}
+
+model Teacher {
+  id                     String     @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  name                   String     @db.VarChar(255)
+  email                  String     @unique @db.VarChar(255)
+  password_hash          String     @db.Text
+  is_suspended           Boolean    @default(false)
+  department             Department
+  role                   String     @default("teacher") @db.VarChar(255)
+  gender                 Gender
+  change_password_token  String?    @db.VarChar(255)
+  change_password_expiry DateTime?
+  created_at             DateTime   @default(dbgenerated("now()"))
+  updated_at             DateTime   @default(dbgenerated("now()"))
+  teacher_id_no          String     @unique @db.VarChar(255)
+
+  classes     TeacherClass[]
+  attendances Attendance[]
+}
+
+model Class {
+  id         String     @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  code       String     @unique @db.VarChar(50)
+  dept       Department
+  year       Int
+  created_at DateTime   @default(dbgenerated("now()"))
+
+  students    Student[]
+  subjects    ClassSubject[]
+  teachers    TeacherClass[]
+  attendances Attendance[]
+}
+
+model Subject {
+  id         String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  code       String   @unique @db.VarChar(50)
+  name       String   @db.VarChar(255)
+  created_at DateTime @default(dbgenerated("now()"))
+
+  classes     ClassSubject[]
+  teachers    TeacherClass[]
+  attendances Attendance[]
+}
+
+model ClassSubject {
+  class_id   String @db.Uuid
+  subject_id String @db.Uuid
+
+  class   Class   @relation(fields: [class_id], references: [id])
+  subject Subject @relation(fields: [subject_id], references: [id])
+
+  @@id([class_id, subject_id])
+}
+
+model TeacherClass {
+  teacher_id String @db.Uuid
+  class_id   String @db.Uuid
+  subject_id String @db.Uuid
+
+  teacher Teacher @relation(fields: [teacher_id], references: [id])
+  class   Class   @relation(fields: [class_id], references: [id])
+  subject Subject @relation(fields: [subject_id], references: [id])
+
+  @@id([teacher_id, class_id, subject_id])
+}
+
+model Attendance {
+  id         String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  class_id   String   @db.Uuid
+  subject_id String   @db.Uuid
+  teacher_id String   @db.Uuid
+  created_at DateTime @default(dbgenerated("now()"))
+
+  class             Class              @relation(fields: [class_id], references: [id])
+  subject           Subject            @relation(fields: [subject_id], references: [id])
+  teacher           Teacher            @relation(fields: [teacher_id], references: [id])
+  attendanceRecords AttendanceRecord[]
+}
+
+model AttendanceRecord {
+  id            String           @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  attendance_id String           @db.Uuid
+  student_id    String           @db.Uuid
+  status        AttendanceStatus
+
+  attendance Attendance @relation(fields: [attendance_id], references: [id])
+  student    Student    @relation(fields: [student_id], references: [id])
+}
