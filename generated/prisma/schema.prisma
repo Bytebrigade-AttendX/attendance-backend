@@ -1,0 +1,158 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+  output   = "../generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Semester {
+  I
+  II
+  III
+  IV
+  V
+  VI
+  VII
+  VIII
+}
+
+enum Department {
+  CSE
+  ECE
+  ME
+  EE
+  Other
+}
+
+enum Gender {
+  male
+  female
+  other
+}
+
+enum AttendanceStatus {
+  present
+  absent
+}
+
+enum Role {
+  student
+  teacher
+  admin
+}
+
+model User {
+  id           String     @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  name         String     @db.VarChar(255)
+  email        String     @unique @db.VarChar(255)
+  otp          String?
+  otp_expiry   DateTime?
+  is_suspended Boolean    @default(false)
+  department   Department
+  role         Role
+  gender       Gender
+  created_at   DateTime   @default(now())
+  updated_at   DateTime   @default(now())
+  fcmToken     String?
+
+  // Relations
+  teacher Teacher? // One-to-one relation with Teacher
+  student Student? // One-to-one relation with Student
+}
+
+// Teachers model
+model Teacher {
+  id            String @id @db.Uuid
+  teacher_id_no String @unique @db.VarChar(255)
+  // Relation to User
+  user          User   @relation(fields: [id], references: [id])
+
+  // Relations for classes, subjects and attendance
+  teacherClasses TeacherClass[]
+  attendances    Attendance[]
+}
+
+// Students model
+model Student {
+  id       String @id @db.Uuid
+  class_id String @db.Uuid
+  year     Int
+  reg_no   String @unique @db.VarChar(255)
+
+  // Relation to User
+  user User @relation(fields: [id], references: [id])
+
+  // Relations
+  class Class @relation(fields: [class_id], references: [id])
+}
+
+model Class {
+  id         String     @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  code       String     @unique @db.VarChar(50)
+  branch     Department
+  semester   Semester
+  created_at DateTime   @default(now())
+
+  students       Student[]
+  subjects       ClassSubject[]
+  teacherClasses TeacherClass[]
+  attendances    Attendance[]
+}
+
+model Subject {
+  id         String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  code       String   @unique @db.VarChar(50)
+  name       String   @db.VarChar(255)
+  created_at DateTime @default(now())
+
+  classes        ClassSubject[]
+  teacherClasses TeacherClass[]
+  attendances    Attendance[]
+}
+
+model ClassSubject {
+  class_id   String @db.Uuid
+  subject_id String @db.Uuid
+
+  class   Class   @relation(fields: [class_id], references: [id])
+  subject Subject @relation(fields: [subject_id], references: [id])
+
+  @@id([class_id, subject_id])
+}
+
+model TeacherClass {
+  teacher_id String @db.Uuid
+  class_id   String @db.Uuid
+  subject_id String @db.Uuid
+
+  teacher Teacher @relation(fields: [teacher_id], references: [id])
+  class   Class   @relation(fields: [class_id], references: [id])
+  subject Subject @relation(fields: [subject_id], references: [id])
+
+  @@id([teacher_id, class_id, subject_id])
+}
+
+model Attendance {
+  id               String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  teacherLatitude  String?
+  teacherLongitude String?
+  teacherAltitude  String?
+  class_id         String    @db.Uuid
+  subject_id       String    @db.Uuid
+  teacher_id       String    @db.Uuid
+  date             DateTime  @default(now())
+  created_at       DateTime  @default(now())
+  session_start    DateTime? @default(now())
+  session_end      DateTime?
+  student_records  Json
+
+  class   Class   @relation(fields: [class_id], references: [id])
+  subject Subject @relation(fields: [subject_id], references: [id])
+  teacher Teacher @relation(fields: [teacher_id], references: [id])
+}
