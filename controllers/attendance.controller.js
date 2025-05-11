@@ -6,6 +6,7 @@ import path from "path";
 import { fileURLToPath } from "url";
 import jwt from "jsonwebtoken";
 import validateLocation from "../utils/checkLocation.js";
+import { sendPushNotification } from "../utils/sendNotification.js";
 
 const startSession = async (req, res) => {
   const {
@@ -76,6 +77,7 @@ const startSession = async (req, res) => {
             email: true,
             gender: true,
             department: true,
+            fcmToken: true,
           },
         },
       },
@@ -84,14 +86,17 @@ const startSession = async (req, res) => {
       },
     });
 
+    const fcmTokens = students
+      .map((student) => student.user.fcmToken)
+      .filter((token) => token !== null && token !== undefined);
+
+    console.log(fcmTokens);
+
     const sessionStart = new Date();
     const sessionEnd = new Date(sessionStart.getTime() + 3 * 60 * 1000); // 3 minutes later
 
-    console.log("done");
-
     // Initialize student_records as JSON (e.g., empty or with default attendance status)
     const studentRecords = students.reduce((acc, student) => {
-      console.log("Error maybe here");
       acc[student.id] = { status: "absent" };
       return acc;
     }, {});
@@ -131,6 +136,15 @@ const startSession = async (req, res) => {
     });
 
     console.log(attendance);
+
+    const data = { attendanceId: attendance.id };
+
+    sendPushNotification(
+      fcmTokens,
+      "Kindly Mark your attendance",
+      "Click this notification to mark your attendance",
+      data
+    );
 
     await fs.writeFile(filePath, JSON.stringify(records, null, 2));
     console.log("Attendance record updated successfully");
