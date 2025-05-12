@@ -9,33 +9,23 @@ export const sendPushNotification = async (
 ) => {
   for (const token of fcmTokens) {
     const message = {
-      notification: {
-        title: title,
-        body: body,
-      },
-      data: data,
-      android: {
-        priority: "high",
-        notification: {
-          sound: "default",
-        },
-      },
-      apns: {
-        payload: {
-          aps: {
-            sound: "default",
-          },
-        },
-        headers: {
-          "apns-priority": "10",
-        },
-      },
-      token,
+      to:token,
+      sound:"default",
+      title:title,
+      body:body,
+      data: {...data,screen:'/student/home'}
     };
 
     try {
-      const response = await admin.messaging().send(message);
-      console.log(`Sent to ${token}: ${response}`);
+      await fetch("https://exp.host/--/api/v2/push/send", {
+        method: "POST",
+        headers: {
+          Accept: "application/json",
+          "Accept-encoding": "gzip, deflate",
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(message),
+  });
     } catch (error) {
       console.error(`Failed for ${token}:`, error);
     }
