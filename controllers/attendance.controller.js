@@ -20,7 +20,7 @@ const startSession = async (req, res) => {
   try {
     let records = [];
     const __filename = fileURLToPath(import.meta.url);
-    const _dirname = path.dirname(_filename);
+    const __dirname = path.dirname(__filename);
     const filePath = path.resolve(__dirname, "../records.temp.json");
     const rawData = await fs.readFile(filePath, "utf-8");
     records = rawData ? JSON.parse(rawData) : [];
@@ -353,7 +353,7 @@ const storeRecords = async (req, res) => {
 //     }
 
 //     const __filename = fileURLToPath(import.meta.url);
-//     const _dirname = path.dirname(_filename);
+//     const __dirname = path.dirname(__filename);
 //     const filePath = path.resolve(__dirname, "../records.temp.json");
 
 //     const rawData = await fs.readFile(filePath, "utf-8");
