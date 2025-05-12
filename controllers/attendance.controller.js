@@ -482,7 +482,7 @@ const getActiveattendance = async (req, res) => {
       where: {
         student_records: {
           path: [studentId],
-          equals: { status: "present" },
+          equals: { status: "absent" },
         },
         session_end: {
           gt: currentTime, // The session should not have ended yet
