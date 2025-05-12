@@ -154,7 +154,7 @@ const startSession = async (req, res) => {
       .json(
         new ApiResponse(
           200,
-          students,
+          { students, attendanceId: attendance.id },
           "Students fetched and attendance session started"
         )
       );
@@ -241,7 +241,7 @@ const getMarked = async (req, res) => {
 
 const endSession = async (req, res) => {
   try {
-    const { token } = req.body;
+    const { token, attendanceId } = req.body;
     if (!token) {
       throw new ApiError(400, "Invalid login");
     }
@@ -255,7 +255,7 @@ const endSession = async (req, res) => {
 
     // Get the latest attendance session for this teacher
     const attendanceRecord = await prisma.attendance.findFirst({
-      where: { teacher_id: teacherId },
+      where: { teacher_id: teacherId, id: attendanceId },
       orderBy: { created_at: "desc" }, // optional: choose the latest session
       select: {
         id: true,
