@@ -86,6 +86,12 @@ const startSession = async (req, res) => {
       },
     });
 
+    const fcmTokens = students
+      .map((student) => student.user.fcmToken)
+      .filter((token) => token !== null && token !== undefined);
+
+    console.log(fcmTokens);
+
     const sessionStart = new Date();
     const sessionEnd = new Date(sessionStart.getTime() + 3 * 60 * 1000); // 3 minutes later
 
@@ -132,6 +138,13 @@ const startSession = async (req, res) => {
     console.log(attendance);
 
     const data = { attendanceId: attendance.id };
+
+    sendPushNotification(
+      fcmTokens,
+      "Kindly Mark your attendance",
+      "Click this notification to mark your attendance",
+      data
+    );
 
     await fs.writeFile(filePath, JSON.stringify(records, null, 2));
     console.log("Attendance record updated successfully");
