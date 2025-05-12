@@ -471,9 +471,9 @@ const getActiveattendance = async (req, res) => {
           path: [studentId],
           equals: { status: "present" },
         },
-        // session_end: {
-        //   gt: currentTime, // The session should not have ended yet
-        // },
+        session_end: {
+          gt: currentTime, // The session should not have ended yet
+        },
       },
       select: {
         id: true,
