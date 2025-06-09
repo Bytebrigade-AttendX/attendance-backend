@@ -418,7 +418,7 @@ const getMarked = async (req, res) => {
       parseFloat(attendance[0].teacherLongitude),
       parseFloat(studentLat),
       parseFloat(studentLon),
-      20000
+      100000
     );
 
     console.log(attendance[0].teacherLatitude);
