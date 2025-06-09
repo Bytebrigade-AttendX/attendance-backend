@@ -242,7 +242,7 @@ const config = {
       "value": "prisma-client-js"
     },
     "output": {
-      "value": "/home/aadar/attendance-backend/generated/prisma",
+      "value": "/home/aadarsh/code/attendance-backend/generated/prisma",
       "fromEnvVar": null
     },
     "config": {
@@ -256,11 +256,12 @@ const config = {
       }
     ],
     "previewFeatures": [],
-    "sourceFilePath": "/home/aadar/attendance-backend/prisma/schema.prisma",
+    "sourceFilePath": "/home/aadarsh/code/attendance-backend/prisma/schema.prisma",
     "isCustomOutput": true
   },
   "relativeEnvPaths": {
-    "rootEnvPath": null
+    "rootEnvPath": null,
+    "schemaEnvPath": "../../.env"
   },
   "relativePath": "../../prisma",
   "clientVersion": "6.7.0",

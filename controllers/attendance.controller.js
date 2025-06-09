@@ -7,6 +7,162 @@ import { fileURLToPath } from "url";
 import jwt from "jsonwebtoken";
 import validateLocation from "../utils/checkLocation.js";
 import { sendPushNotification } from "../utils/sendNotification.js";
+import client from "../utils/redisClient.js";
+
+// const startSession = async (req, res) => {
+//   const {
+//     branch,
+//     semester,
+//     subjectName,
+//     token,
+//     teacherLatitude,
+//     teacherLongitude,
+//   } = req.body;
+//   try {
+//     let records = [];
+//     const __filename = fileURLToPath(import.meta.url);
+//     const __dirname = path.dirname(__filename);
+//     const filePath = path.resolve(__dirname, "../records.temp.json");
+//     const rawData = await fs.readFile(filePath, "utf-8");
+//     records = rawData ? JSON.parse(rawData) : [];
+
+//     if (!token) {
+//       throw new ApiError(400, "Invalid login");
+//     }
+
+//     const decodedToken = jwt.verify(token, process.env.JWT_SECRET);
+//     const teacherId = decodedToken.userId;
+
+//     if (!teacherId) {
+//       throw new ApiError(400, "Wrong token provided");
+//     }
+
+//     // First, find the class that matches the branch and semester
+//     const classObj = await prisma.class.findFirst({
+//       where: {
+//         branch: branch,
+//         semester: semester,
+//         // Make sure this class has the given subject assigned
+//         subjects: {
+//           some: {
+//             subject: {
+//               name: subjectName,
+//             },
+//           },
+//         },
+//         // And the teacher teaches this subject for this class
+//         teacherClasses: {
+//           some: {
+//             teacher_id: teacherId,
+//             subject: {
+//               name: subjectName,
+//             },
+//           },
+//         },
+//       },
+//     });
+
+//     if (!classObj) {
+//       throw new Error("No matching class found with the given parameters");
+//     }
+
+//     // Now fetch all students from this class with their user information
+//     const students = await prisma.student.findMany({
+//       where: {
+//         class_id: classObj.id,
+//       },
+//       include: {
+//         user: {
+//           select: {
+//             name: true,
+//             email: true,
+//             gender: true,
+//             department: true,
+//             fcmToken: true,
+//           },
+//         },
+//       },
+//       orderBy: {
+//         reg_no: "asc", // Order by registration number
+//       },
+//     });
+
+//     const fcmTokens = students
+//       .map((student) => student.user.fcmToken)
+//       .filter((token) => token !== null && token !== undefined);
+
+//     console.log(fcmTokens);
+
+//     const sessionStart = new Date();
+//     const sessionEnd = new Date(sessionStart.getTime() + 3 * 60 * 1000); // 3 minutes later
+
+//     // Initialize student_records as JSON (e.g., empty or with default attendance status)
+//     const studentRecords = students.reduce((acc, student) => {
+//       acc[student.id] = { status: "absent" };
+//       return acc;
+//     }, {});
+
+//     console.log(studentRecords);
+
+//     const subject = await prisma.subject.findFirst({
+//       where: {
+//         name: subjectName,
+//       },
+//       select: {
+//         id: true,
+//       },
+//     });
+
+//     // Create the attendance record
+//     const attendance = await prisma.attendance.create({
+//       data: {
+//         class_id: classObj.id,
+//         subject_id: subject.id, // Use the subject ID from the class query
+//         teacher_id: teacherId,
+//         teacherLatitude: teacherLatitude,
+//         teacherLongitude: teacherLongitude,
+//         date: sessionStart,
+//         session_start: sessionStart,
+//         session_end: sessionEnd,
+//         student_records: studentRecords,
+//       },
+//     });
+
+//     records.push({
+//       attendanceId: attendance.id,
+//       teacherLatitude: attendance.teacherLatitude,
+//       teacherLongitude: attendance.teacherLongitude,
+//       teacherId: teacherId,
+//       studentRecords: studentRecords,
+//     });
+
+//     console.log(attendance);
+
+//     // const data = { attendanceId: attendance.id };
+
+//     // sendPushNotification(
+//     //   fcmTokens,
+//     //   "Kindly Mark your attendance",
+//     //   "Click this notification to mark your attendance",
+//     //   data
+//     // );
+
+//     await fs.writeFile(filePath, JSON.stringify(records, null, 2));
+//     console.log("Attendance record updated successfully");
+
+//     return res
+//       .status(200)
+//       .json(
+//         new ApiResponse(
+//           200,
+//           { students, attendanceId: attendance.id },
+//           "Students fetched and attendance session started"
+//         )
+//       );
+//   } catch (error) {
+//     return res.status(400).json(new ApiResponse(400, null, error.message));
+//   }
+// };
 
 const startSession = async (req, res) => {
   const {
@@ -17,13 +173,9 @@ const startSession = async (req, res) => {
     teacherLatitude,
     teacherLongitude,
   } = req.body;
+
   try {
     let records = [];
-    const __filename = fileURLToPath(import.meta.url);
-    const __dirname = path.dirname(__filename);
-    const filePath = path.resolve(__dirname, "../records.temp.json");
-    const rawData = await fs.readFile(filePath, "utf-8");
-    records = rawData ? JSON.parse(rawData) : [];
 
     if (!token) {
       throw new ApiError(400, "Invalid login");
@@ -36,12 +188,10 @@ const startSession = async (req, res) => {
       throw new ApiError(400, "Wrong token provided");
     }
 
-    // First, find the class that matches the branch and semester
     const classObj = await prisma.class.findFirst({
       where: {
-        branch: branch,
-        semester: semester,
-        // Make sure this class has the given subject assigned
+        branch,
+        semester,
         subjects: {
           some: {
             subject: {
@@ -49,7 +199,6 @@ const startSession = async (req, res) => {
             },
           },
         },
-        // And the teacher teaches this subject for this class
         teacherClasses: {
           some: {
             teacher_id: teacherId,
@@ -65,7 +214,6 @@ const startSession = async (req, res) => {
       throw new Error("No matching class found with the given parameters");
     }
 
-    // Now fetch all students from this class with their user information
     const students = await prisma.student.findMany({
       where: {
         class_id: classObj.id,
@@ -82,26 +230,21 @@ const startSession = async (req, res) => {
         },
       },
       orderBy: {
-        reg_no: "asc", // Order by registration number
+        reg_no: "asc",
       },
     });
 
     const fcmTokens = students
       .map((student) => student.user.fcmToken)
-      .filter((token) => token !== null && token !== undefined);
-
-    console.log(fcmTokens);
+      .filter((token) => token);
 
     const sessionStart = new Date();
-    const sessionEnd = new Date(sessionStart.getTime() + 3 * 60 * 1000); // 3 minutes later
+    const sessionEnd = new Date(sessionStart.getTime() + 3 * 60 * 1000);
 
-    // Initialize student_records as JSON (e.g., empty or with default attendance status)
     const studentRecords = students.reduce((acc, student) => {
       acc[student.id] = { status: "absent" };
       return acc;
     }, {});
-
-    console.log(studentRecords);
 
     const subject = await prisma.subject.findFirst({
       where: {
@@ -112,20 +255,23 @@ const startSession = async (req, res) => {
       },
     });
 
-    // Create the attendance record
     const attendance = await prisma.attendance.create({
       data: {
         class_id: classObj.id,
-        subject_id: subject.id, // Use the subject ID from the class query
+        subject_id: subject.id,
         teacher_id: teacherId,
-        teacherLatitude: teacherLatitude,
-        teacherLongitude: teacherLongitude,
+        teacherLatitude,
+        teacherLongitude,
         date: sessionStart,
         session_start: sessionStart,
         session_end: sessionEnd,
         student_records: studentRecords,
       },
     });
+
+    // Get existing Redis data (if any)
+    const existingData = await client.get("attendance_records");
+    records = existingData ? JSON.parse(existingData) : [];
 
     records.push({
       attendanceId: attendance.id,
@@ -134,8 +280,6 @@ const startSession = async (req, res) => {
       teacherId: teacherId,
       studentRecords: studentRecords,
     });
-
-    console.log(attendance);
 
     const data = { attendanceId: attendance.id };
 
@@ -146,8 +290,10 @@ const startSession = async (req, res) => {
       data
     );
 
-    await fs.writeFile(filePath, JSON.stringify(records, null, 2));
-    console.log("Attendance record updated successfully");
+    await client.set(
+      `attendance_session:${attendance.id}`,
+      JSON.stringify(records)
+    );
 
     return res
       .status(200)
@@ -162,6 +308,82 @@ const startSession = async (req, res) => {
     return res.status(400).json(new ApiResponse(400, null, error.message));
   }
 };
+
+// const getMarked = async (req, res) => {
+//   try {
+//     const { attendanceId, token, studentLat, studentLon } = req.body;
+
+//     if (!token) {
+//       throw new ApiError(400, "Invalid login");
+//     }
+
+//     const decodedToken = jwt.verify(token, process.env.JWT_SECRET);
+//     const selectedUser = decodedToken.userId;
+
+//     if (!selectedUser) {
+//       throw new ApiError(400, "Wrong token provided");
+//     }
+
+//     const user = await prisma.user.findFirst({
+//       where: { id: selectedUser },
+//       select: { id: true },
+//     });
+
+//     if (!user) {
+//       throw new ApiError(400, "User not found");
+//     }
+
+//     // Fetch attendance record from DB
+//     const attendance = await prisma.attendance.findUnique({
+//       where: { id: attendanceId },
+//       select: {
+//         teacherLatitude: true,
+//         teacherLongitude: true,
+//         student_records: true,
+//       },
+//     });
+
+//     if (!attendance) {
+//       throw new ApiError(404, "Attendance record not found");
+//     }
+
+//     // Validate location
+//     const isPresentInRadius = validateLocation(
+//       parseFloat(attendance.teacherLatitude),
+//       parseFloat(attendance.teacherLongitude),
+//       parseFloat(studentLat),
+//       parseFloat(studentLon),
+//       20
+//     );
+
+//     if (!isPresentInRadius) {
+//       return res.status(403).json({
+//         message: "Student not within required range. Attendance not marked.",
+//       });
+//     }
+
+//     // Prepare updated student_records
+//     const updatedRecords = {
+//       ...attendance.student_records,
+//       [selectedUser]: { status: "present" },
+//     };
+
+//     // Update attendance in DB
+//     await prisma.attendance.update({
+//       where: { id: attendanceId },
+//       data: {
+//         student_records: updatedRecords,
+//       },
+//     });
+
+//     console.log("Attendance updated for student", selectedUser);
+
+//     return res.status(200).json({ message: "Marked present successfully" });
+//   } catch (error) {
+//     console.error("Error in getMarked:", error.message);
+//     return res.status(400).json({ error: error.message });
+//   }
+// };
 
 const getMarked = async (req, res) => {
   try {
@@ -178,37 +400,29 @@ const getMarked = async (req, res) => {
       throw new ApiError(400, "Wrong token provided");
     }
 
-    const user = await prisma.user.findFirst({
-      where: { id: selectedUser },
-      select: { id: true },
-    });
+    //Fetch attendance session from Redis using formatted key
+    const redisKey = `attendance_session:${attendanceId}`;
+    const sessionData = await client.get(redisKey);
 
-    if (!user) {
-      throw new ApiError(400, "User not found");
+    if (!sessionData) {
+      throw new ApiError(404, "Attendance session not found in Redis");
     }
 
-    // Fetch attendance record from DB
-    const attendance = await prisma.attendance.findUnique({
-      where: { id: attendanceId },
-      select: {
-        teacherLatitude: true,
-        teacherLongitude: true,
-        student_records: true,
-      },
-    });
+    const attendance = JSON.parse(sessionData);
 
-    if (!attendance) {
-      throw new ApiError(404, "Attendance record not found");
-    }
+    console.log(attendance[0]);
 
-    // Validate location
+    // Step 2: Validate location
     const isPresentInRadius = validateLocation(
-      parseFloat(attendance.teacherLatitude),
-      parseFloat(attendance.teacherLongitude),
+      parseFloat(attendance[0].teacherLatitude),
+      parseFloat(attendance[0].teacherLongitude),
       parseFloat(studentLat),
       parseFloat(studentLon),
       20
     );
+
+    console.log(attendance[0].teacherLatitude);
+    console.log(attendance[0].teacherLongitude);
 
     if (!isPresentInRadius) {
       return res.status(403).json({
@@ -216,21 +430,12 @@ const getMarked = async (req, res) => {
       });
     }
 
-    // Prepare updated student_records
-    const updatedRecords = {
-      ...attendance.student_records,
-      [selectedUser]: { status: "present" },
-    };
+    //Update student_records in Redis
+    attendance[0].studentRecords[selectedUser] = { status: "present" };
 
-    // Update attendance in DB
-    await prisma.attendance.update({
-      where: { id: attendanceId },
-      data: {
-        student_records: updatedRecords,
-      },
-    });
+    await client.set(redisKey, JSON.stringify(attendance));
 
-    console.log("Attendance updated for student", selectedUser);
+    console.log("Attendance marked present in Redis for student", selectedUser);
 
     return res.status(200).json({ message: "Marked present successfully" });
   } catch (error) {
@@ -239,11 +444,80 @@ const getMarked = async (req, res) => {
   }
 };
 
+// const endSession = async (req, res) => {
+//   try {
+//     const { token, attendanceId } = req.body;
+//     if (!token) {
+//       throw new ApiError(400, "Invalid login");
+//     }
+
+//     const decodedToken = jwt.verify(token, process.env.JWT_SECRET);
+//     const teacherId = decodedToken.userId;
+
+//     if (!teacherId) {
+//       throw new ApiError(400, "Wrong token provided");
+//     }
+
+//     // Get the latest attendance session for this teacher
+//     const attendanceRecord = await prisma.attendance.findFirst({
+//       where: { teacher_id: teacherId, id: attendanceId },
+//       orderBy: { created_at: "desc" },
+//       select: {
+//         id: true,
+//         student_records: true,
+//       },
+//     });
+
+//     if (!attendanceRecord) {
+//       throw new ApiError(404, "Attendance record not found");
+//     }
+
+//     const studentRecords = attendanceRecord.student_records || {};
+//     const studentIds = Object.keys(studentRecords);
+
+//     const studentsWithStatus = await prisma.student.findMany({
+//       where: {
+//         id: {
+//           in: studentIds,
+//         },
+//       },
+//       select: {
+//         id: true,
+//         user: {
+//           select: {
+//             name: true,
+//           },
+//         },
+//       },
+//     });
+
+//     const combinedList = studentsWithStatus.map((student) => ({
+//       id: student.id,
+//       name: student.user.name,
+//       status: studentRecords[student.id]?.status || "absent",
+//     }));
+
+//     return res
+//       .status(200)
+//       .json(
+//         new ApiResponse(
+//           200,
+//           { combinedList, attendanceId: attendanceRecord.id },
+//           "Records sent successfully"
+//         )
+//       );
+//   } catch (error) {
+//     console.error("Error in endSession:", error.message);
+//     return res.status(400).json({ error: error.message });
+//   }
+// };
+
 const endSession = async (req, res) => {
   try {
     const { token, attendanceId } = req.body;
+
     if (!token) {
-      throw new ApiError(400, "Invalid login");
+      throw new ApiError(400, "Invalid Request");
     }
 
     const decodedToken = jwt.verify(token, process.env.JWT_SECRET);
@@ -253,23 +527,26 @@ const endSession = async (req, res) => {
       throw new ApiError(400, "Wrong token provided");
     }
 
-    // Get the latest attendance session for this teacher
-    const attendanceRecord = await prisma.attendance.findFirst({
-      where: { teacher_id: teacherId, id: attendanceId },
-      orderBy: { created_at: "desc" }, // optional: choose the latest session
-      select: {
-        id: true,
-        student_records: true,
-      },
-    });
+    //Fetch attendance session from Redis
+    const redisKey = `attendance_session:${attendanceId}`;
+    const sessionData = await client.get(redisKey);
 
-    if (!attendanceRecord) {
-      throw new ApiError(404, "Attendance record not found");
+    if (!sessionData) {
+      throw new ApiError(404, "Attendance session not found in Redis");
     }
 
-    const studentRecords = attendanceRecord.student_records || {};
+    const attendance = JSON.parse(sessionData);
+
+    //Validate teacher ID matches session (optional but recommended)
+    if (attendance[0].teacherId !== teacherId) {
+      throw new ApiError(403, "Unauthorized access to this attendance session");
+    }
+
+    //Get student records
+    const studentRecords = attendance[0].studentRecords || {};
     const studentIds = Object.keys(studentRecords);
 
+    // Step 4: Fetch student names from DB
     const studentsWithStatus = await prisma.student.findMany({
       where: {
         id: {
@@ -286,6 +563,7 @@ const endSession = async (req, res) => {
       },
     });
 
+    //Combine records
     const combinedList = studentsWithStatus.map((student) => ({
       id: student.id,
       name: student.user.name,
@@ -297,7 +575,7 @@ const endSession = async (req, res) => {
       .json(
         new ApiResponse(
           200,
-          { combinedList, attendanceId: attendanceRecord.id },
+          { combinedList, attendanceId },
           "Records sent successfully"
         )
       );
@@ -333,6 +611,9 @@ const storeRecords = async (req, res) => {
         student_records: studentRecords, // Update the student_records JSON field
       },
     });
+
+    const redisKey = `attendance_session:${attendanceId}`;
+    await client.del(redisKey);
 
     // Send response with updated attendance
     return res
@@ -558,6 +839,11 @@ const getActiveattendance = async (req, res) => {
   }
 };
 
+const redisConnect = async (req, res) => {
+  client.set("foo", "done");
+  res.status(200).json({ message: "Redis pe gaya saaman" });
+};
+
 // TODO: Update records to be added
 
 export {
@@ -566,4 +852,5 @@ export {
   storeRecords,
   endSession,
   getActiveattendance,
+  redisConnect,
 };
