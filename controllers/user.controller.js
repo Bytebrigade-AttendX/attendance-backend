@@ -18,7 +18,7 @@ const loginOtpSend = async (req, res) => {
 
     if (!user) throw new ApiError(404, "User not found");
     // const otp = await handleOtp();
-    const otp = 123456;
+    const otp = "123456";
 
     await prisma.user.update({
       where: { id: user.id },
